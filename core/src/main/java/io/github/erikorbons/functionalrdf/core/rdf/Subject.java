@@ -1,10 +1,11 @@
 package io.github.erikorbons.functionalrdf.core.rdf;
 
 import io.github.erikorbons.functionalrdf.core.iri.Iri;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-public interface Subject {
+public interface Subject extends Comparable<Subject> {
 
   Optional<BlankNode> blankNode();
   Optional<Iri> iri();
@@ -15,5 +16,14 @@ public interface Subject {
 
   default void ifIri(final Consumer<? super Iri> iri) {
     iri().ifPresent(iri);
+  }
+
+  @Override
+  default int compareTo(final Subject other) {
+    Objects.requireNonNull(other, "other cannot be null");
+
+    return
+        blankNode().map(a -> other.blankNode().map(a::compareTo).orElse(-1))
+            .orElseGet(() -> iri().map(a -> other.iri().map(a::compareTo).orElse(1)).orElse(1));
   }
 }

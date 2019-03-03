@@ -2,7 +2,8 @@ package io.github.erikorbons.functionalrdf.core.rdf;
 
 import java.util.stream.Stream;
 
-public interface Graph {
+public interface Resource {
+  Subject id();
 
   Stream<Triple> triples();
 }

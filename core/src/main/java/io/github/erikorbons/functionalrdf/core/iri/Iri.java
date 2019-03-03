@@ -29,6 +29,8 @@ public interface Iri extends Comparable<Iri> {
 
   Iri applyRelativeIri(RelativeIri relativeIri);
 
+  Iri withFragment(String fragment);
+
   static Iri createNormalized(final String iri) {
     try {
       return IriParser.parseIri(iri);

@@ -1,7 +1,6 @@
 package io.github.erikorbons.functionalrdf.core.iri;
 
 import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
@@ -124,6 +123,22 @@ public class DefaultIri implements Iri, IriReference {
           relativeIri.fragment().orElse(null)
       );
     }
+  }
+
+  @Override
+  public Iri withFragment(final String fragment) {
+    if ((this.fragment == null && fragment == null) || (this.fragment != null && this.fragment
+        .equals(fragment))) {
+      return this;
+    }
+
+    return new DefaultIri(
+        this.scheme,
+        this.authority,
+        this.path,
+        this.query,
+        fragment
+    );
   }
 
   static class Authority implements Iri.Authority {
