@@ -7,6 +7,7 @@
  * in the user guide at https://docs.gradle.org/5.1.1/userguide/multi_project_builds.html
  */
 
-rootProject.name = 'functional-rdf'
+rootProject.name = 'hurricane'
 
-include 'core'
+include ':core'
+include ':rdf:core'
