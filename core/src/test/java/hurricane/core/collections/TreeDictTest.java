@@ -1,4 +1,4 @@
-package hurricane.rdf.core.collections;
+package hurricane.core.collections;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;

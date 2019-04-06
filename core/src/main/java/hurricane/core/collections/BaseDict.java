@@ -1,4 +1,4 @@
-package hurricane.rdf.core.collections;
+package hurricane.core.collections;
 
 public interface BaseDict<K, V, T extends BaseDict<K, V, T>> {
   int getSize();

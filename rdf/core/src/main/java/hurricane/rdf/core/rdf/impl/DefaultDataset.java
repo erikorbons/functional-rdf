@@ -1,6 +1,6 @@
 package hurricane.rdf.core.rdf.impl;
 
-import hurricane.rdf.core.collections.PersistentSet;
+import hurricane.core.collections.PersistentSet;
 import hurricane.rdf.core.rdf.Dataset;
 import hurricane.rdf.core.rdf.Graph;
 import hurricane.rdf.core.rdf.Quad;

@@ -1,17 +1,29 @@
-project(':rdf:core') {
-    apply plugin: 'java-library'
-
-    ext.moduleName = 'hurricane.rdf.core'
-
+allprojects {
     repositories {
         // Use jcenter for resolving your dependencies.
         // You can declare any Maven/Ivy/file repository here.
         jcenter()
     }
+}
+
+project(':core') {
+    apply plugin: 'java-library'
+
+    ext.moduleName = 'hurricane.core'
 
     dependencies {
+        testImplementation 'junit:junit:4.12'
+    }
+}
 
-        // Use JUnit test framework
+project(':rdf:core') {
+    apply plugin: 'java-library'
+
+    ext.moduleName = 'hurricane.rdf.core'
+
+    dependencies {
+        implementation project(':core')
+
         testImplementation 'junit:junit:4.12'
     }
 }

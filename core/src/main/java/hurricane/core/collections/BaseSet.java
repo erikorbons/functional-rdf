@@ -1,4 +1,4 @@
-package hurricane.rdf.core.collections;
+package hurricane.core.collections;
 
 public interface BaseSet<V, T extends BaseSet<V, T>> {
   int getSize();
