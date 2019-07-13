@@ -1,4 +1,20 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        jcenter()
+        gradlePluginPortal()
+    }
+    dependencies {
+        classpath 'io.spring.gradle:dependency-management-plugin:1.0.6.RELEASE'
+        classpath group: 'com.cinnober.gradle', name: 'semver-git', version: '2.4.0'
+    }
+}
+
 allprojects {
+    apply plugin: 'com.cinnober.gradle.semver-git'
+
+    group 'functional-rdf'
+
     repositories {
         // Use jcenter for resolving your dependencies.
         // You can declare any Maven/Ivy/file repository here.
