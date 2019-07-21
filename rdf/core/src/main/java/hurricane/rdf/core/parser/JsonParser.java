@@ -2,6 +2,7 @@ package hurricane.rdf.core.parser;
 
 import hurricane.rdf.core.parser.JsonParser.Token;
 import java.util.LinkedList;
+import java.util.ListIterator;
 
 public final class JsonParser extends Parser<Token> {
 
@@ -37,6 +38,49 @@ public final class JsonParser extends Parser<Token> {
   }
 
   @Override
+  public boolean hasToken() {
+    final ListIterator<Tokens> iterator = tokenBuffers.listIterator();
+    final Tokens firstBuffer = iterator.next();
+    final Tokens buffer;
+
+    // If this buffer has been consumed, check the contents of the next:
+    if (firstBuffer.isConsumed()) {
+      // Consumed the first buffer, see if there is a second one available:
+      if (!iterator.hasNext()) {
+        return false;
+      }
+
+      buffer = iterator.next();
+    } else {
+      buffer = firstBuffer;
+    }
+
+    // See if the next token in the active buffer signals end of input:
+    return !buffer.isConsumed() && buffer.peekToken() != null;
+  }
+
+  @Override
+  public Token nextToken() {
+    final Tokens firstBuffer = tokenBuffers.peekFirst();
+    final Tokens buffer;
+
+    // If the first buffer has been consumed, move on to the next:
+    if (firstBuffer.isConsumed()) {
+      tokenBuffers.removeFirst();
+      buffer = tokenBuffers.peekFirst();
+    } else {
+      buffer = firstBuffer;
+    }
+
+    // Verify that there are tokens in the buffer:
+    if (buffer.isConsumed() || buffer.peekToken() == null) {
+      throw new IllegalStateException("There are no tokens available in this parser");
+    }
+
+    return buffer.nextToken();
+  }
+
+  @Override
   protected ParserState initialState() {
     return skipWhitespace(() -> cp -> {
       if (cp == '{') {
@@ -45,6 +89,9 @@ public final class JsonParser extends Parser<Token> {
       } else if (cp == '[') {
         pushState(array());
         return false;
+      } else if (cp < 0) {
+        emitEndOfInput();
+        return false;
       }
 
       return false;
@@ -52,10 +99,17 @@ public final class JsonParser extends Parser<Token> {
   }
 
   private ParserState object() {
-    return expect('{', () -> cp -> {
+    return expect('{', () -> skipWhitespace(() -> cp -> {
       emit(Token.START_OBJECT);
+
+      if (cp == '}') {
+        emit(Token.END_OBJECT);
+        become(popState());
+        return true;
+      }
+
       return false;
-    });
+    }));
   }
 
   private ParserState array() {
@@ -108,7 +162,7 @@ public final class JsonParser extends Parser<Token> {
     }
 
     boolean isConsumed() {
-      return readOffset == tokens.length;
+      return readOffset == tokens.length - 1;
     }
 
     void addToken(final Token token, final String value, final long characterOffset, final long lineNumber, final long columnNumber) {
@@ -125,12 +179,17 @@ public final class JsonParser extends Parser<Token> {
     }
 
     Token nextToken() {
+      final Token result = peekToken();
+      ++ readOffset;
+      return result;
+    }
+
+    Token peekToken() {
       if (isConsumed() || readOffset + 1 >= writeOffset) {
         throw new IllegalStateException("No tokens available");
       }
 
-      ++ readOffset;
-      return tokens[readOffset];
+      return tokens[readOffset + 1];
     }
 
     String currentValue() {
