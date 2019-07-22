@@ -56,7 +56,7 @@ public final class JsonParser extends Parser<Token> {
     }
 
     // See if the next token in the active buffer signals end of input:
-    return !buffer.isConsumed() && buffer.peekToken() != null;
+    return buffer.hasToken() && buffer.peekToken() != null;
   }
 
   @Override
@@ -73,8 +73,8 @@ public final class JsonParser extends Parser<Token> {
     }
 
     // Verify that there are tokens in the buffer:
-    if (buffer.isConsumed() || buffer.peekToken() == null) {
-      throw new IllegalStateException("There are no tokens available in this parser");
+    if (!buffer.hasToken() || buffer.peekToken() == null) {
+      throw new IllegalStateException("There are no more tokens available in this parser");
     }
 
     return buffer.nextToken();
@@ -190,6 +190,10 @@ public final class JsonParser extends Parser<Token> {
       }
 
       return tokens[readOffset + 1];
+    }
+
+    boolean hasToken() {
+      return readOffset < writeOffset - 1;
     }
 
     String currentValue() {
