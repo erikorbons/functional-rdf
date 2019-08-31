@@ -3,6 +3,9 @@ package hurricane.rdf.core.parser;
 import hurricane.rdf.core.parser.JsonParser.Token;
 import java.util.LinkedList;
 import java.util.ListIterator;
+import java.util.function.Function;
+import java.util.function.IntFunction;
+import java.util.function.Supplier;
 
 public final class JsonParser extends Parser<Token> {
 
@@ -106,6 +109,10 @@ public final class JsonParser extends Parser<Token> {
         emit(Token.END_OBJECT);
         become(popState());
         return true;
+      } else if (cp == '\"') {
+        // Parse attributes:
+        pushState(member());
+        return false;
       }
 
       return false;
@@ -118,6 +125,125 @@ public final class JsonParser extends Parser<Token> {
       return false;
     });
   }
+
+  private ParserState member() {
+    return string(
+        memberName -> skipWhitespace(
+            () -> expect(
+                ':',
+                () -> {
+                  emit(Token.FIELD_NAME);
+                  return value(() -> popState());
+                }
+            )
+        )
+    );
+  }
+
+  private ParserState value(final Supplier<ParserState> continuation) {
+    return skipWhitespace(() -> (cp -> {
+      if (cp == '"') {
+        // Parse string value:
+        become(string(value -> {
+          emit(Token.VALUE_STRING);
+          return continuation.get();
+        }));
+      }
+
+      return false;
+    }));
+  }
+
+  private ParserState string(final Function<String, ParserState> stringConsumer) {
+    final StringBuilder value = new StringBuilder();
+
+    return expect(
+        '"',
+        () -> (cp -> {
+          if (cp == '"') {
+            // End the string and move to the state provided by the consumer:
+            become(stringConsumer.apply(value.toString()));
+            return true;
+          } else if (cp == '\\') {
+            // Handle escape sequences:
+            pushState(escapedCharacter(echar -> {
+              value.appendCodePoint(echar);
+              return popState();
+            }));
+          } else if (cp < 0x20 || cp > 0x10ffff) {
+            // Reject invalid characters:
+            return false;
+          }
+
+          // Accept the character and add to the value:
+          value.appendCodePoint(cp);
+
+          return true;
+        })
+    );
+  }
+
+  public ParserState escapedCharacter(final IntFunction<ParserState> charConsumer) {
+    return expect(
+        '\\',
+        () -> ((int cp) -> {
+          switch (cp) {
+            case 't':
+              become(charConsumer.apply('\t'));
+              return true;
+            case 'b':
+              become(charConsumer.apply('\b'));
+              return true;
+            case 'n':
+              become(charConsumer.apply('\n'));
+              return true;
+            case 'r':
+              become(charConsumer.apply('\n'));
+              return true;
+            case 'f':
+              become(charConsumer.apply('\f'));
+              return true;
+            case '\"':
+              become(charConsumer.apply('\"'));
+              return true;
+            case '\'':
+              become(charConsumer.apply('\''));
+              return true;
+            case '\\':
+              become(charConsumer.apply('\\'));
+              return true;
+            case 'u':
+            case 'U':
+              become(hexCharacters(cp, hexCharacter -> {
+                return charConsumer.apply(hexCharacter);
+              }));
+              return true;
+          }
+
+          return false;
+        }
+        ));
+  }
+
+  public ParserState hexCharacters(final int c, final IntFunction<ParserState> ucharConsumer) {
+    final StringBuilder hexString = new StringBuilder();
+    return hexChar -> {
+      // Append hex characters:
+      if ((hexChar >= '0' && hexChar <= '9') || (hexChar >= 'a' && hexChar <= 'z') || (hexChar >= 'A' && hexChar <= 'Z')) {
+        hexString.appendCodePoint(hexChar);
+
+        // End the character if it has the right length:
+        if ((c == 'u' && hexString.length() == 4) || (c == 'U' && hexString.length() == 8)) {
+          become(ucharConsumer.apply(Integer.parseInt(hexString.toString(), 16)));
+          return true;
+        }
+      }
+
+      // Reject other characters:
+      return false;
+    };
+  }
+
 
   public enum Token {
     START_OBJECT,

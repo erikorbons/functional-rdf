@@ -23,6 +23,17 @@ public class JsonParserTest {
     assertEquals(Token.END_OBJECT, output.get(1));
   }
 
+  @Test
+  public void testStringAttribute() {
+    final List<JsonParser.Token> output = parse("{ \"a\": \"b\" }");
+
+    assertEquals(4, output.size());
+    assertEquals(Token.START_OBJECT, output.get(0));
+    assertEquals(Token.FIELD_NAME, output.get(1));
+    assertEquals(Token.VALUE_STRING, output.get(2));
+    assertEquals(Token.END_OBJECT, output.get(3));
+  }
+
   private final List<Token> parse(final String ... input) {
     return ParserTestUtils.parse(JsonParser::new, input);
   }
