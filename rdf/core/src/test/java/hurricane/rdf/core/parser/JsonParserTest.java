@@ -25,7 +25,7 @@ public class JsonParserTest {
 
   @Test
   public void testStringAttribute() {
-    final List<JsonParser.Token> output = parse("{ \"a\": \"b\" }");
+    final List<JsonParser.Token> output = parse(" { \"a\": \"b\" } ");
 
     assertEquals(4, output.size());
     assertEquals(Token.START_OBJECT, output.get(0));

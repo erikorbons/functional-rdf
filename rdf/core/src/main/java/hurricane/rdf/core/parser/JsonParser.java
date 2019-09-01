@@ -112,7 +112,8 @@ public final class JsonParser extends Parser<Token> {
       } else if (cp == '\"') {
         // Parse attributes:
         // TODO: Don't use pushState here, instead give member a continuation function.
-        pushState(member());
+        become(firstMember());
+        //pushState(firstMember());
         return false;
       }
 
@@ -127,14 +128,49 @@ public final class JsonParser extends Parser<Token> {
     });
   }
 
-  private ParserState member() {
+  private ParserState firstMember() {
+    return skipWhitespace(() -> cp -> {
+      if (cp == '}') {
+        emit(Token.END_OBJECT);
+        become(popState());
+        return true;
+      } else if (cp == '\"') {
+        // Parse attribute member:
+        become(member(() -> endOrNextMember()));
+        return false;
+      }
+
+      return false;
+    });
+  }
+
+  private ParserState endOrNextMember() {
+    return skipWhitespace(() -> cp -> {
+      if (cp == '}' ) {
+        emit(Token.END_OBJECT);
+        become(popState());
+        return true;
+      } else if (cp == ',') {
+        become(nextMember());
+        return false;
+      }
+
+      return false;
+    });
+  }
+
+  private ParserState nextMember() {
+    return expect(',', () -> skipWhitespace(() -> member(() -> endOrNextMember())));
+  }
+
+  private ParserState member(final Supplier<ParserState> continuation) {
     return string(
         memberName -> skipWhitespace(
             () -> expect(
                 ':',
                 () -> {
                   emit(Token.FIELD_NAME);
-                  return value(() -> popState());
+                  return value(continuation);
                 }
             )
         )
