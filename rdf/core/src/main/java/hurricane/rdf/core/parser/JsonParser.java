@@ -111,6 +111,7 @@ public final class JsonParser extends Parser<Token> {
         return true;
       } else if (cp == '\"') {
         // Parse attributes:
+        // TODO: Don't use pushState here, instead give member a continuation function.
         pushState(member());
         return false;
       }
