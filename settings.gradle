@@ -1,4 +1,4 @@
 rootProject.name = 'functional-rdf'
 
-include ':core'
+include ':collections'
 include ':rdf:core'

@@ -22,10 +22,10 @@ allprojects {
     }
 }
 
-project(':core') {
+project(':collections') {
     apply plugin: 'java-library'
 
-    ext.moduleName = 'hurricane.core'
+    ext.moduleName = 'hurricane.collections'
 
     dependencies {
         testImplementation 'junit:junit:4.12'
@@ -38,7 +38,7 @@ project(':rdf:core') {
     ext.moduleName = 'hurricane.rdf.core'
 
     dependencies {
-        implementation project(':core')
+        implementation project(':collections')
 
         testImplementation 'junit:junit:4.12'
     }

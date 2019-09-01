@@ -1,3 +1,3 @@
-open module hurricane.core {
+open module hurricane.collections {
   exports hurricane.core.collections;
 }
