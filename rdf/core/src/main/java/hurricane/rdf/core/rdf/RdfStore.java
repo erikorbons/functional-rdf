@@ -1,9 +1,9 @@
 package hurricane.rdf.core.rdf;
 
+import hurricane.rdf.core.iri.Iri;
 import java.util.concurrent.CompletionStage;
 
-public interface ResourceStore {
+public interface RdfStore {
 
-  CompletionStage<>
-
+  CompletionStage<Dataset> getDataset(Iri datasetIri);
 }

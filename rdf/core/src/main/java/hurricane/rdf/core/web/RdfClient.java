@@ -2,12 +2,12 @@ package hurricane.rdf.core.web;
 
 import java.net.http.HttpClient;
 
-public class WebClient {
+public class RdfClient {
 
-  private final HttpClient
+  private final HttpClient httpClient;
 
-  public WebClient(final HttpClient httpClient) {
-
+  public RdfClient(final HttpClient httpClient) {
+    this.httpClient = httpClient;
   }
 
 }
