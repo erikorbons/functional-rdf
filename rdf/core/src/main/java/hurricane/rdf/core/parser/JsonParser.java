@@ -85,7 +85,7 @@ public final class JsonParser extends Parser<Token> {
 
   @Override
   protected ParserState initialState() {
-    return skipWhitespace(() -> cp -> {
+    return cp -> {
       if (cp == '{') {
         pushState(object());
         return false;
@@ -95,10 +95,13 @@ public final class JsonParser extends Parser<Token> {
       } else if (cp < 0) {
         emitEndOfInput();
         return false;
+      } else if (cp <= ' ') {
+        // Skip whitespace:
+        return true;
       }
 
       return false;
-    });
+    };
   }
 
   private ParserState object() {
@@ -111,9 +114,7 @@ public final class JsonParser extends Parser<Token> {
         return true;
       } else if (cp == '\"') {
         // Parse attributes:
-        // TODO: Don't use pushState here, instead give member a continuation function.
         become(firstMember());
-        //pushState(firstMember());
         return false;
       }
 
@@ -124,8 +125,41 @@ public final class JsonParser extends Parser<Token> {
   private ParserState array() {
     return expect('[', () -> cp -> {
       emit(Token.START_ARRAY);
+      become(firstArrayMember());
       return false;
     });
+  }
+
+  private ParserState firstArrayMember() {
+    return skipWhitespace(() -> cp -> {
+      if (cp == ']') {
+        emit(Token.END_ARRAY);
+        become(popState());
+        return true;
+      }
+
+      become(value(() -> arrayEndOrNextMember()));
+      return false;
+    });
+  }
+
+  private ParserState arrayEndOrNextMember() {
+    return skipWhitespace(() -> cp -> {
+      if (cp == ']') {
+        emit(Token.END_ARRAY);
+        become(popState());
+        return true;
+      } else if (cp == ',') {
+        become(nextArrayMember());
+        return true;
+      }
+
+      return true;
+    });
+  }
+
+  private ParserState nextArrayMember() {
+    return expect(',', () -> skipWhitespace(() -> value(() -> arrayEndOrNextMember())));
   }
 
   private ParserState firstMember() {
