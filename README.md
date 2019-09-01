@@ -1,0 +1,1 @@
+[![Build Status](https://travis-ci.org/erikorbons/functional-rdf.svg?branch=master)](https://travis-ci.org/erikorbons/functional-rdf)
