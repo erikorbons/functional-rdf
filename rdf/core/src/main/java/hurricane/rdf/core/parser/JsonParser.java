@@ -19,6 +19,10 @@ public final class JsonParser extends Parser<Token> {
 
   @Override
   protected void emit(final Token token) {
+    emit(token, "");
+  }
+
+  protected void emit(final Token token, final String value) {
     final Tokens currentBuffer = tokenBuffers.peekLast();
     final Tokens buffer;
 
@@ -33,7 +37,7 @@ public final class JsonParser extends Parser<Token> {
     // Append the token:
     buffer.addToken(
         token,
-        "",
+        value,
         0,
         0,
         0
@@ -205,7 +209,7 @@ public final class JsonParser extends Parser<Token> {
             () -> expect(
                 ':',
                 () -> {
-                  emit(Token.FIELD_NAME);
+                  emit(Token.FIELD_NAME, memberName);
                   return value(continuation);
                 }
             )
@@ -218,7 +222,7 @@ public final class JsonParser extends Parser<Token> {
       if (cp == '"') {
         // Parse string value:
         become(string(value -> {
-          emit(Token.VALUE_STRING);
+          emit(Token.VALUE_STRING, value);
           return continuation.get();
         }));
       } else if (cp == 't') {
@@ -242,7 +246,7 @@ public final class JsonParser extends Parser<Token> {
       } else if (cp == '-' || (cp >= '0' && cp <= '9')) {
         // Parse number:
         become(number(n -> {
-          emit(Token.VALUE_FLOAT);
+          emit(Token.VALUE_FLOAT, n);
           return continuation.get();
         }));
       } else if (cp == '{') {
