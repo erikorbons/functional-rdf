@@ -30,10 +30,6 @@ project(':collections') {
     dependencies {
         testImplementation 'junit:junit:4.12'
     }
-
-    test {
-        useJUnitPlatform()
-    }
 }
 
 project(':rdf:core') {
@@ -45,10 +41,6 @@ project(':rdf:core') {
         implementation project(':collections')
 
         testImplementation 'junit:junit:4.12'
-    }
-
-    test {
-        useJUnitPlatform()
     }
 }
 
