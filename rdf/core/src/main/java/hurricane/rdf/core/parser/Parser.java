@@ -65,8 +65,9 @@ public abstract class Parser<T> {
         if (codePoint < 0) {
           throw new IllegalArgumentException("Unexpected EOF");
         } else {
-          final StringBuilder message = new StringBuilder("Invalid character: ");
+          final StringBuilder message = new StringBuilder("Invalid character: '");
           message.appendCodePoint(codePoint);
+          message.append('\'');
           throw new IllegalArgumentException(message.toString());
         }
       }
