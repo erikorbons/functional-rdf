@@ -412,7 +412,7 @@ public final class JsonParser extends Parser<Token> {
               become(charConsumer.apply('\n'));
               return true;
             case 'r':
-              become(charConsumer.apply('\n'));
+              become(charConsumer.apply('\r'));
               return true;
             case 'f':
               become(charConsumer.apply('\f'));
