@@ -87,10 +87,10 @@ public final class JsonParser extends Parser<Token> {
   protected ParserState initialState() {
     return cp -> {
       if (cp == '{') {
-        pushState(object());
+        pushState(object(this::popState));
         return false;
       } else if (cp == '[') {
-        pushState(array());
+        pushState(array(this::popState));
         return false;
       } else if (cp < 0) {
         emitEndOfInput();
@@ -104,7 +104,7 @@ public final class JsonParser extends Parser<Token> {
     };
   }
 
-  private ParserState object() {
+  private ParserState object(final Supplier<ParserState> continuation) {
     return expect('{', () -> skipWhitespace(() -> cp -> {
       emit(Token.START_OBJECT);
 
@@ -114,7 +114,7 @@ public final class JsonParser extends Parser<Token> {
         return true;
       } else if (cp == '\"') {
         // Parse attributes:
-        become(firstMember());
+        become(firstMember(continuation));
         return false;
       }
 
@@ -122,55 +122,56 @@ public final class JsonParser extends Parser<Token> {
     }));
   }
 
-  private ParserState array() {
+  private ParserState array(final Supplier<ParserState> continuation) {
     return expect('[', () -> cp -> {
       emit(Token.START_ARRAY);
-      become(firstArrayMember());
+      become(firstArrayMember(continuation));
       return false;
     });
   }
 
-  private ParserState firstArrayMember() {
+  private ParserState firstArrayMember(final Supplier<ParserState> arrayContinuation) {
     return skipWhitespace(() -> cp -> {
       if (cp == ']') {
         emit(Token.END_ARRAY);
-        become(popState());
+        become(arrayContinuation.get());
         return true;
       }
 
-      become(value(() -> arrayEndOrNextMember()));
+      become(value(() -> arrayEndOrNextMember(arrayContinuation)));
       return false;
     });
   }
 
-  private ParserState arrayEndOrNextMember() {
+  private ParserState arrayEndOrNextMember(final Supplier<ParserState> arrayContinuation) {
     return skipWhitespace(() -> cp -> {
       if (cp == ']') {
         emit(Token.END_ARRAY);
-        become(popState());
+        become(arrayContinuation.get());
         return true;
       } else if (cp == ',') {
-        become(nextArrayMember());
-        return true;
+        become(nextArrayMember(arrayContinuation));
+        return false;
       }
 
       return true;
     });
   }
 
-  private ParserState nextArrayMember() {
-    return expect(',', () -> skipWhitespace(() -> value(() -> arrayEndOrNextMember())));
+  private ParserState nextArrayMember(final Supplier<ParserState> arrayContinuation) {
+    return expect(
+        ',', () -> skipWhitespace(() -> value(() -> arrayEndOrNextMember(arrayContinuation))));
   }
 
-  private ParserState firstMember() {
+  private ParserState firstMember(final Supplier<ParserState> objectContinuation) {
     return skipWhitespace(() -> cp -> {
       if (cp == '}') {
         emit(Token.END_OBJECT);
-        become(popState());
+        become(objectContinuation.get());
         return true;
       } else if (cp == '\"') {
         // Parse attribute member:
-        become(member(() -> endOrNextMember()));
+        become(member(() -> endOrNextMember(objectContinuation)));
         return false;
       }
 
@@ -178,14 +179,14 @@ public final class JsonParser extends Parser<Token> {
     });
   }
 
-  private ParserState endOrNextMember() {
+  private ParserState endOrNextMember(final Supplier<ParserState> objectContinuation) {
     return skipWhitespace(() -> cp -> {
       if (cp == '}' ) {
         emit(Token.END_OBJECT);
-        become(popState());
+        become(objectContinuation.get());
         return true;
       } else if (cp == ',') {
-        become(nextMember());
+        become(nextMember(objectContinuation));
         return false;
       }
 
@@ -193,8 +194,9 @@ public final class JsonParser extends Parser<Token> {
     });
   }
 
-  private ParserState nextMember() {
-    return expect(',', () -> skipWhitespace(() -> member(() -> endOrNextMember())));
+  private ParserState nextMember(final Supplier<ParserState> objectContinuation) {
+    return expect(
+        ',', () -> skipWhitespace(() -> member(() -> endOrNextMember(objectContinuation))));
   }
 
   private ParserState member(final Supplier<ParserState> continuation) {
@@ -219,10 +221,52 @@ public final class JsonParser extends Parser<Token> {
           emit(Token.VALUE_STRING);
           return continuation.get();
         }));
+      } else if (cp == 't') {
+        // Parse true:
+        become(constant("true", () -> {
+          emit(Token.VALUE_TRUE);
+          return continuation.get();
+        }));
+      } else if (cp == 'f') {
+        // Parse false:
+        become(constant("false", () -> {
+          emit(Token.VALUE_FALSE);
+          return continuation.get();
+        }));
+      } else if (cp == 'n') {
+        // Parse null:
+        become(constant("null", () -> {
+          emit(Token.VALUE_NULL);
+          return continuation.get();
+        }));
+      } else if (cp == '-' || (cp >= '0' && cp <= '9')) {
+        // Parse number:
+        become(number(n -> {
+          emit(Token.VALUE_FLOAT);
+          return continuation.get();
+        }));
+      } else if (cp == '{') {
+        // Parse object:
+        become(object(continuation));
+        return false;
+      } else if (cp == '[') {
+        // Parse array:
+        become(array(continuation));
+        return false;
       }
 
       return false;
     }));
+  }
+
+  private ParserState constant(final CharSequence value, final Supplier<ParserState> continuation) {
+    return expect(value.charAt(0), () -> {
+      if (value.length() > 1) {
+        return constant(value.subSequence(1, value.length()), continuation);
+      }
+
+      return continuation.get();
+    });
   }
 
   private ParserState string(final Function<String, ParserState> stringConsumer) {
@@ -254,7 +298,106 @@ public final class JsonParser extends Parser<Token> {
     );
   }
 
-  public ParserState escapedCharacter(final IntFunction<ParserState> charConsumer) {
+  private ParserState number(final Function<String, ParserState> numberConsumer) {
+    final StringBuilder value = new StringBuilder();
+
+    return cp -> {
+      if (cp == '-' && value.length() == 0) {
+        value.append('-');
+        return true;
+      } else if (cp == '0') {
+        value.append('0');
+
+        if (value.length() == 1 || (value.length() == 2 && value.charAt(0) == '-')) {
+          // Move on to the fraction if the zero is the first character or the first character
+          // after a minus sign:
+          become(fraction(value, numberConsumer));
+        }
+
+        return true;
+      } else if (cp >= '1' && cp <= '9') {
+        value.appendCodePoint(cp);
+        return true;
+      }
+
+      // Only move on to the fraction if the integer part has at least one character:
+      if (value.length() >= 1) {
+        become(fraction(value, numberConsumer));
+      }
+
+      return false;
+    };
+  }
+
+  private ParserState fraction(
+      final StringBuilder value, final Function<String, ParserState> numberConsumer) {
+    return cp -> {
+      if (cp == '.') {
+        value.append('.');
+        become(fractionDigits(value, numberConsumer));
+        return true;
+      }
+
+      become(exponent(value, numberConsumer));
+      return false;
+    };
+  }
+
+  private ParserState fractionDigits(
+      final StringBuilder value, final Function<String, ParserState> numberConsumer) {
+    return cp -> {
+      if (cp >= '0' && cp <= '9') {
+        value.append(cp);
+        return true;
+      }
+
+      become(exponent(value, numberConsumer));
+      return false;
+    };
+  }
+
+  private ParserState exponent(
+      final StringBuilder value, final Function<String, ParserState> numberConsumer) {
+    return cp -> {
+      if (cp == 'e' || cp == 'E') {
+        value.appendCodePoint(cp);
+        become(exponentSign(value, numberConsumer));
+        return true;
+      }
+
+      become(numberConsumer.apply(value.toString()));
+      return false;
+    };
+  }
+
+  private ParserState exponentSign(
+      final StringBuilder value, final Function<String, ParserState> numberConsumer) {
+    return cp -> {
+      if (cp == '-' || cp == '+') {
+        value.appendCodePoint(cp);
+        become(exponentDigits(value, numberConsumer));
+        return true;
+      }
+
+      become(exponentDigits(value, numberConsumer));
+      return false;
+    };
+  }
+
+  private ParserState exponentDigits(
+      final StringBuilder value, final Function<String, ParserState> numberConsumer) {
+    return cp -> {
+      if (cp >= '0' && cp <= '9') {
+        value.appendCodePoint(cp);
+        return true;
+      }
+
+      become(numberConsumer.apply(value.toString()));
+      return false;
+    };
+  }
+
+  private ParserState escapedCharacter(final IntFunction<ParserState> charConsumer) {
     return expect(
         '\\',
         () -> ((int cp) -> {
